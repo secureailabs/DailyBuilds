@@ -9,17 +9,18 @@ from collections import Counter
 #output: local hash values
 
 X=0
-with open(sys.argv[0], 'rb') as f:
+with open(sys.argv[1], 'rb') as f:
    X=pickle.load(f) 
 
-#print("Obtaining hash parameters from parent")
-num_dim = len(X[0])
+print(X.shape)
+
+num_dim = np.shape(X)[1]
 r = 4.0
 L = min(40, num_dim-1)
 mu = 0.0
 sigma = 1.0
 hash_functions = []
-with open(sys.argv[1], 'rb') as f:
+with open(sys.argv[0], 'rb') as f:
     info = pickle.load(f)
     num_dim = info['num_dim']
     r = info['r']

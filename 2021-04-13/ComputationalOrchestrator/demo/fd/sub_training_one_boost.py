@@ -13,9 +13,9 @@ import xgboost as xgb
 
 X = 0
 y = 0
-with open(sys.argv[0], "rb") as f:
+with open(sys.argv[4], "rb") as f:
     X = pickle.load(f)
-with open(sys.argv[1], "rb") as f:
+with open(sys.argv[5], "rb") as f:
     y = pickle.load(f)
 
 xgb_local = xgb.DMatrix(np.asarray(X), label=np.asarray(y))
@@ -24,14 +24,14 @@ node_id = 0
 training_node_id = 0
 num_parties = 0
 
-with open(sys.argv[2], "rb") as f:
+with open(sys.argv[0], "rb") as f:
     info = pickle.load(f)
     training_node_id = info['training']
     node_id = info['node_id']
     num_parties = info['num_parties']
 
 model = 0
-with open(sys.argv[3], 'rb') as f:
+with open(sys.argv[1], 'rb') as f:
     model = pickle.load(f)
 
 if node_id == training_node_id :
@@ -48,14 +48,14 @@ if node_id == training_node_id :
     #        all_hess.append(data['hess'])
     all_grad = []
     all_hess = []
-    with open(sys.argv[4], 'rb') as f:
+    with open(sys.argv[2], 'rb') as f:
         data = pickle.load(f)
         for i in range(num_parties):
             all_grad.append(data[i]['grad'])
             all_hess.append(data[i]['hess'])
 
     hash_tables = 0
-    with open(sys.argv[5], 'rb') as f:
+    with open(sys.argv[3], 'rb') as f:
         hash_tables = pickle.load(f)
     
     G = []

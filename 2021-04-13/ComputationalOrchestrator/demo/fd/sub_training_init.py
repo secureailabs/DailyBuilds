@@ -23,9 +23,9 @@ def cust_obj(preds, training):
 
 X = 0
 y = 0
-with open(sys.argv[0], "rb") as f:
+with open(sys.argv[3], "rb") as f:
     X = pickle.load(f)
-with open(sys.argv[1], "rb") as f:
+with open(sys.argv[4], "rb") as f:
     y = pickle.load(f)
 
 #print("Initializing node info")
@@ -36,7 +36,7 @@ initialization = 0
 
 #print("Waiting for node ID info from parent")
 
-with open(sys.argv[2], "rb") as f:
+with open(sys.argv[0], "rb") as f:
     info = pickle.load(f)
     training_node_id = info['training']
     node_id = info['node_id']
@@ -46,11 +46,11 @@ with open(sys.argv[2], "rb") as f:
 #print("Starting intialization of SimFL")
 #print("Initializing local dataset and copy of global model")
 model = 0
-with open(sys.argv[3], "rb") as f:
+with open(sys.argv[1], "rb") as f:
     model = pickle.load(f)
 
 hash_tables = []
-with open(sys.argv[4], 'rb') as f:
+with open(sys.argv[2], 'rb') as f:
     hash_tables = pickle.load(f)
 #print("Got similarity matrices from parent")
 #print("Calculating gradients for local instances")
