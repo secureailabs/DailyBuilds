@@ -1,6 +1,7 @@
 from .fdcore import Algorithm
 from ..core import newguid, pushdata, pulldata, pushfn, execjob, registerfn
 import torch.nn as nn
+import optuna
 import time
 
 class Fdlr(Algorithm):
@@ -13,12 +14,13 @@ class Fdlr(Algorithm):
     
     def setfn(self):
         fndict = {}
-        fndict['init_submodel'] = registerfn("fn_modelinit.py", 1, 2, 0, 1)[0]
+        fndict['init_submodel'] = registerfn("fn_modelinit.py", 2, 2, 0, 1)[0]
         fndict['get_grad'] = registerfn("fn_getGrad.py", 0, 1, 1, 0)[0]
         fndict['update_grad'] = registerfn("fn_updateGradients.py", 1, 1, 0, 1)[0]
         fndict['agg'] = registerfn("fn_agg.py", 1, 0, 1, 0)[0]
         fndict['test'] = registerfn("fn_test.py", 1, 1, 1, 0)[0]
         fndict['mae'] = registerfn("fn_mae.py", 0, 3, 1, 0)[0]
+        fndict['cross_val_score'] = registerfn("fn_cross_val_score.py", 3, 2, 1, 0)[0]
         
         return fndict
     
@@ -31,11 +33,11 @@ class Fdlr(Algorithm):
     def initmodel(self, dimx, dimy):
         self.model = nn.Linear(dimx, dimy)
     
-    def initsubmodels(self):
+    def initsubmodels(self, lr):
         party_models = []
         for i in range(len(self.vms)):
             jobid = newguid()
-            pushdata(self.vms[i], jobid, self.fns['init_submodel'], [self.model], [self.data['X_train'][i], self.data['y_train'][i]], self.workspace)
+            pushdata(self.vms[i], jobid, self.fns['init_submodel'], [self.model, lr], [self.data['X_train'][i], self.data['y_train'][i]], self.workspace)
             execjob(self.vms[i], self.fns['init_submodel'], jobid)
             result = pulldata(self.vms[i], jobid, self.fns['init_submodel'], self.workspace)
             party_models.append(result[1][0])
@@ -46,7 +48,7 @@ class Fdlr(Algorithm):
             if(epoch%9==0):
                 print("processing round: "+str(epoch+1))
             gradlist = []
-            time.sleep(0.1)
+            time.sleep(0.3)
             for i in range(len(self.vms)):
                 jobid = newguid()
                 pushdata(self.vms[i], jobid, self.fns['get_grad'], [], [self.parties[i]], self.workspace)
@@ -87,3 +89,13 @@ class Fdlr(Algorithm):
             preds.append(result[0][0])
         
         return preds
+    
+    def score(self, score, cv):
+        scores = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            pushdata(self.vms[i], jobid, self.fns['cross_val_score'], [score, cv, self.model], [self.data['X_train'][i], self.data['y_train'][i]], self.workspace)
+            execjob(self.vms[i], self.fns['cross_val_score'], jobid)
+            result = pulldata(self.vms[i], jobid, self.fns['cross_val_score'], self.workspace)
+            scores.append(result[0][0])
+        return sum(scores)/len(scores)
