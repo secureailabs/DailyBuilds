@@ -110,7 +110,21 @@ Execute this by:
 # Data Research Domain Tools
 
 ## Researcher Interface
-    <TODO>
+The Researcher Interface is a python library which enalbes researcher to do federated machine learning studies. To install the library, one need to first install the following packages:
+
+    sudo pip3 install numpy scipy scikit-learn pandas matplotlib torch xgboost optuna
+
+To install the library, navigate to the sail folder and run the following command:
+
+    sudo pip3 install .
+
+After which you should be able to import the python lib in your python console or jupyter lib. You can try the following command in python console to validate:
+
+    from sail.core import connect
+    
+    >>>connect(<virtual machine ip address>, <port number>, <username>, <password>)
+    
+If the lib is installed correctly, the virtual machine ID is returned as a string.
 
 ## Audit Tool
     <TODO>
