@@ -42,6 +42,9 @@ with open(sys.argv[2], 'rb') as f:
 test_X = torch.Tensor(test_X)
 y_pred = party.model(test_X)
 y_pred = y_pred.detach().numpy()
+
+print(test_y)
+print(y_pred)
  
 err = mean_absolute_error(test_y, y_pred)
 
