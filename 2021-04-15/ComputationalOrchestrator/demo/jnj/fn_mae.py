@@ -42,7 +42,7 @@ with open(sys.argv[2], 'rb') as f:
 test_X = torch.Tensor(test_X)
 y_pred = party.model(test_X)
 y_pred = y_pred.detach().numpy()
-length = ypred.shape[0]
+length = y_pred.shape[0]
 
 print(test_y)
 print(y_pred)
