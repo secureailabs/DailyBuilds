@@ -1,5 +1,6 @@
 from ..core import connect, newguid, pushdata, pulldata, pushfn, execjob, registerfn
 import numpy as np
+from scipy.stats import t
 
 class DataFrameGroup:
     def __init__(self, vms, workplace):
@@ -40,6 +41,13 @@ class DataFrameGroup:
         fndict['private_get'] = registerfn("fn_private_get.py", 1, 1, 1, 0)[0]
         fndict['droprow'] = registerfn("fn_droprow.py", 1, 1, 0, 1)[0]
         fndict['pearson'] = registerfn("fn_pearson.py", 4, 1, 3, 0)[0]
+        fndict['df_mean'] = registerfn("fn_df_mean.py", 0, 1, 2, 0)[0]
+        fndict['df_std'] = registerfn("fn_df_std.py", 1, 1, 2, 0)[0]
+        fndict['class_precent'] = registerfn("fn_class_precent.py", 2, 1, 2, 0)[0]
+        fndict['df_select'] = registerfn("fn_df_select.py", 2, 1, 0, 1)[0]
+        fndict['df_size'] = registerfn("fn_df_size.py", 0, 1, 1, 0)[0]
+        fndict['df_col'] = registerfn("fn_df_col.py", 0, 1, 1, 0)[0]
+        fndict['df_gen_df'] = registerfn("fn_gen_df.py", 0, 2, 1, 0)[0]
         return fndict
 
     def initvms(self):
@@ -237,7 +245,7 @@ class DataFrameGroup:
         dfs = []
         for i in range(len(self.vms)):
             jobid = newguid()
-            pushdata(self.vms[i], jobid, self.fns['astype'], [mytpe[i]], [df[i]], self.workspace)
+            pushdata(self.vms[i], jobid, self.fns['astype'], [mtype[i]], [df[i]], self.workspace)
             execjob(self.vms[i], self.fns['astype'], jobid)
             result = pulldata(self.vms[i], jobid, self.fns['astype'], self.workspace)
             dfs.append(result[1][0])
@@ -339,3 +347,140 @@ class DataFrameGroup:
             sumsx += result[0][1]
             sumsy += result[0][2]
         return sumprod/((sumsx*sumsy)**0.5)
+    
+    def df_mean(self, df):
+        s = 0
+        num = 0
+        mean_arr = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            pushdata(self.vms[i], jobid, self.fns['df_mean'], [], [df[i]], self.workspace)
+            execjob(self.vms[i], self.fns['df_mean'], jobid)
+            result = pulldata(self.vms[i], jobid, self.fns['df_mean'], self.workspace)
+            s += result[0][0]*result[0][1]
+            num += result[0][1]
+            mean_arr.append(result[0][0])
+        mean_arr.append(s/num)
+        return mean_arr
+    
+    def df_std(self, df_mean, df):
+        s = 0
+        num = 0
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            pushdata(self.vms[i], jobid, self.fns['df_std'], [df_mean], [df[i]], self.workspace)
+            execjob(self.vms[i], self.fns['df_std'], jobid)
+            result = pulldata(self.vms[i], jobid, self.fns['df_std'], self.workspace)
+            s += result[0][0]
+            num += result[0][1]
+        return (s/num)**0.5
+    
+    def df_var(self, df):
+        s = 0
+        num = 0
+        dfmean = self.df_mean(df)[-1]
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            pushdata(self.vms[i], jobid, self.fns['df_std'], [dfmean], [df[i]], self.workspace)
+            execjob(self.vms[i], self.fns['df_std'], jobid)
+            result = pulldata(self.vms[i], jobid, self.fns['df_std'], self.workspace)
+            s += result[0][0]
+            num += result[0][1]
+        return s/(num-1)
+
+    def df_size(self, df):
+        sz = 0
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            pushdata(self.vms[i], jobid, self.fns['df_size'], [], [df[i]], self.workspace)
+            execjob(self.vms[i], self.fns['df_size'], jobid)
+            result = pulldata(self.vms[i], jobid, self.fns['df_size'], self.workspace)
+            sz += result[0][0]
+        return sz
+
+    def ttest_ind(self, df1, df2):
+        mu1 = self.df_mean(df1)[-1]
+        mu2 = self.df_mean(df2)[-1]
+        s1 = self.df_std(mu1, df1)
+        s2 = self.df_std(mu2, df2)
+        n1 = self.df_size(df1)
+        n2 = self.df_size(df2)
+
+        t_res = (mu1-mu2)/(((n1-1)*s1**2+(n2-1)*s2**2)*(1/n1+1/n2)/(n1+n2-2))**0.5
+        pvalue = t.sf(t_res.abs(), n1+n2-2)
+        statistics = t_res.to_numpy()
+
+        return statistics, pvalue
+
+    def ttest_ind_mutual(self, df):
+        mean_arr = []
+        num_arr = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            pushdata(self.vms[i], jobid, self.fns['df_mean'], [], [df[i]], self.workspace)
+            execjob(self.vms[i], self.fns['df_mean'], jobid)
+            result = pulldata(self.vms[i], jobid, self.fns['df_mean'], self.workspace)
+            mean_arr.append(result[0][0])
+            num_arr.append(result[0][1])
+        
+        std_arr = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            pushdata(self.vms[i], jobid, self.fns['df_std'], [mean_arr[i]], [df[i]], self.workspace)
+            execjob(self.vms[i], self.fns['df_std'], jobid)
+            result = pulldata(self.vms[i], jobid, self.fns['df_std'], self.workspace)
+            std_arr.append((result[0][0]/result[0][1])**0.5)
+        
+        ttest_arr=[]
+        lenarr=len(self.vms)
+        for i in range(lenarr):
+            t_res = (mean_arr[i]-mean_arr[(i+1)%lenarr])/(((num_arr[i]-1)*std_arr[i]**2+(num_arr[(i+1)%lenarr]-1)*std_arr[(i+1)%lenarr]**2)*(1/num_arr[i]+1/num_arr[(i+1)%lenarr])/(num_arr[i]+num_arr[(i+1)%lenarr]-2))**0.5
+            ttest_arr.append(t_res)
+        
+        return ttest_arr
+    
+    def label_precentage(self, label1, label2, df):
+        sumde = 0
+        sumnu = 0
+        pre_res = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            pushdata(self.vms[i], jobid, self.fns['class_precent'], [label1, label2], [df[i]], self.workspace)
+            execjob(self.vms[i], self.fns['class_precent'], jobid)
+            result = pulldata(self.vms[i], jobid, self.fns['class_precent'], self.workspace)
+            sumde += result[0][0]
+            sumnu += result[0][1]
+            pre_res.append(result[0][0]/result[0][1])
+        pre_res.append(sumde/sumnu)
+        return pre_res
+
+    def df_select(self, label, val, df):
+        res_df = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            pushdata(self.vms[i], jobid, self.fns['df_select'], [label, val], [df[i]], self.workspace)
+            execjob(self.vms[i], self.fns['df_select'], jobid)
+            result = pulldata(self.vms[i], jobid, self.fns['df_select'], self.workspace)
+            res_df.append(result[1][0])
+        return res_df
+    
+    def df_col_name(self, df):
+        col_name = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            pushdata(self.vms[i], jobid, self.fns['df_col'], [], [df[i]], self.workspace)
+            execjob(self.vms[i], self.fns['df_col'], jobid)
+            result = pulldata(self.vms[i], jobid, self.fns['df_col'], self.workspace)
+            col_name.append(result[0][0])
+        return col_name
+    
+    # def gen_df(self, col, data):
+    #     df = []
+    #     for i in range(len(self.vms)):
+    #         jobid = newguid()
+    #         pushdata(self.vms[i], jobid, self.fns['df_gen_df'], [col[i], data[i]], [], self.workspace)
+    #         execjob(self.vms[i], self.fns['df_gen_df'], jobid)
+    #         result = pulldata(self.vms[i], jobid, self.fns['df_gen_df'], self.workspace)
+    #         df.append(result[0][0])
+    #     return df
+    
