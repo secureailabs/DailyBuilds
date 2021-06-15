@@ -48,6 +48,9 @@ class DataFrameGroup:
         fndict['df_size'] = registerfn("fn_df_size.py", 0, 1, 1, 0)[0]
         fndict['df_col'] = registerfn("fn_df_col.py", 0, 1, 1, 0)[0]
         fndict['df_gen_df'] = registerfn("fn_gen_df.py", 0, 2, 1, 0)[0]
+        fndict['bin_cate'] = registerfn("fn_bin_cate.py", 1, 1, 0, 1)[0]
+        fndict['to_tensor'] = registerfn("fn_to_tensor.py", 1, 1, 0, 1)[0]
+        fndict['feature_num'] = registerfn("fn_feature_num.py", 0, 1, 1, 0)[0]
         return fndict
 
     def initvms(self):
@@ -474,6 +477,13 @@ class DataFrameGroup:
             col_name.append(result[0][0])
         return col_name
     
+    def df_get_feature_num(self, df):
+        jobid = newguid()
+        pushdata(self.vms[0], jobid, self.fns['feature_num'], [], [df], self.workspace)
+        execjob(self.vms[0], self.fns['feature_num'], jobid)
+        result = pulldata(self.vms[0], jobid, self.fns['feature_num'], self.workspace)
+        return result[0][0]
+    
     # def gen_df(self, col, data):
     #     df = []
     #     for i in range(len(self.vms)):
@@ -483,4 +493,22 @@ class DataFrameGroup:
     #         result = pulldata(self.vms[i], jobid, self.fns['df_gen_df'], self.workspace)
     #         df.append(result[0][0])
     #     return df
-    
+    def bin_cate(self, df, col_name):
+        new_df = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            pushdata(self.vms[i], jobid, self.fns['bin_cate'], [col_name], [df[i]], self.workspace)
+            execjob(self.vms[i], self.fns['bin_cate'], jobid)
+            result = pulldata(self.vms[i], jobid, self.fns['bin_cate'], self.workspace)
+            new_df.append(result[1][0])
+        return new_df
+
+    def to_tensor(self, df, trans_bit):
+        tensors = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            pushdata(self.vms[i], jobid, self.fns['to_tensor'], [trans_bit], [df[i]], self.workspace)
+            execjob(self.vms[i], self.fns['to_tensor'], jobid)
+            result = pulldata(self.vms[i], jobid, self.fns['to_tensor'], self.workspace)
+            tensors.append(result[1][0])
+        return tensors
