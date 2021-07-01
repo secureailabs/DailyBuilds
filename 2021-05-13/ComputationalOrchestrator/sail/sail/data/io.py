@@ -369,6 +369,7 @@ class DataFrameGroup:
     def df_std(self, df_mean, df):
         s = 0
         num = 0
+        std_arr = []
         for i in range(len(self.vms)):
             jobid = newguid()
             pushdata(self.vms[i], jobid, self.fns['df_std'], [df_mean], [df[i]], self.workspace)
@@ -376,7 +377,9 @@ class DataFrameGroup:
             result = pulldata(self.vms[i], jobid, self.fns['df_std'], self.workspace)
             s += result[0][0]
             num += result[0][1]
-        return (s/num)**0.5
+            std_arr.append((result[0][0]/result[0][1])**0.5)
+        std_arr.append((s/num)**0.5)
+        return std_arr
     
     def df_var(self, df):
         s = 0
@@ -393,21 +396,40 @@ class DataFrameGroup:
 
     def df_size(self, df):
         sz = 0
+        sz_arr = []
         for i in range(len(self.vms)):
             jobid = newguid()
             pushdata(self.vms[i], jobid, self.fns['df_size'], [], [df[i]], self.workspace)
             execjob(self.vms[i], self.fns['df_size'], jobid)
             result = pulldata(self.vms[i], jobid, self.fns['df_size'], self.workspace)
             sz += result[0][0]
-        return sz
+            sz_arr.append(result[0][0])
+        sz_arr.append(sz)
+        return sz_arr
+    
+    def ttest_ind_mono(self, df1, df2):
+        mu1 = self.df_mean(df1)
+        mu2 = self.df_mean(df2)
+        s1 = self.df_std(mu1[-1], df1)
+        s2 = self.df_std(mu2[-1], df2)
+        n1 = self.df_size(df1)
+        n2 = self.df_size(df2)
+
+        t_res = []
+        for i in range(len(self.vms)):
+            t_tmp = (mu1[i]-mu2[i])/(((n1[i]-1)*s1[i]**2+(n2[i]-1)*s2[i]**2)*(1/n1[i]+1/n2[i])/(n1[i]+n2[i]-2))**0.5
+            t_tmp_pvalue = t.sf(t_tmp.abs(), n1[i]+n2[i]-2)
+            t_tmp_stat = t_tmp.to_numpy()
+            t_res.append([t_tmp_pvalue, t_tmp_stat])
+        return t_res
 
     def ttest_ind(self, df1, df2):
         mu1 = self.df_mean(df1)[-1]
         mu2 = self.df_mean(df2)[-1]
-        s1 = self.df_std(mu1, df1)
-        s2 = self.df_std(mu2, df2)
-        n1 = self.df_size(df1)
-        n2 = self.df_size(df2)
+        s1 = self.df_std(mu1, df1)[-1]
+        s2 = self.df_std(mu2, df2)[-1]
+        n1 = self.df_size(df1)[-1]
+        n2 = self.df_size(df2)[-1]
 
         t_res = (mu1-mu2)/(((n1-1)*s1**2+(n2-1)*s2**2)*(1/n1+1/n2)/(n1+n2-2))**0.5
         pvalue = t.sf(t_res.abs(), n1+n2-2)
